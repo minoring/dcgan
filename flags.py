@@ -1,5 +1,4 @@
 """Define flags for DCGAN"""
-
 import numpy as np
 from absl import flags
 
