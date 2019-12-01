@@ -97,3 +97,4 @@ if __name__ == '__main__':
     download_lsun()
   if 'mnist' in args.datasets:
     download_mnist()
+  
