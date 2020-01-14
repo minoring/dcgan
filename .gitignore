@@ -3,3 +3,4 @@ src
 .DS_Store
 __pycache__
 out
+.vscode
