@@ -9,6 +9,8 @@ import numpy as np
 from ops import BatchNorm
 from ops import linear
 from ops import deconv2d
+from ops import lrelu
+from ops import conv_cond_concat
 from utils import imread
 
 
@@ -203,3 +205,39 @@ class DCGAN(object):
 
         return tf.nn.sigmoid(
             decond2d(h2, [self.batch_size, s_h, s_w, self.c_dim], name='g_h3'))
+
+  def discriminator(self, image, y=None, reuse=False):
+    """Discriminator
+
+      Returns:
+        (predition, logits)
+    """
+    with tf.variable_scope('discriminator') as scope:
+      if reuse:
+        scope.reuse_variables()
+      
+      if not self.y_dim:
+        h0 = lrelu(conv2d(image, self.df_dim, name='d_ho_conv'))
+        h1 = lrelu(self.d_bn1(conv2d(h0, self.df_dim * 2, name='d_h1_conv')))
+        h2 = lrelu(self.d_nb2(conv2d(h1, self.df_dim * 4, name='d_h2_conv')))
+        h3 = lrelu(self.d_bn3(conv2d(h2, self.df_dim * 4, name='d_h3_conv')))
+        h4 = linear(tf.reshape(h3, [self.batch_size, -1]), 1, 'd_h4_lin')
+
+        return tf.nn.sigmoid(h4), h4
+      
+      yb = tf.reshape(y, [self.batch_size, 1, 1, self.y_dim])
+      x = conv_cond_concat(image, yb)
+
+      h0 = lrelu(conv2d(x, self.c_dim + self.y_dim, name='d_h0_conv'))
+      h0 = conv_cond_concat(h0, yb)
+
+      h1 = lrelu(self.d_bn1(conv2d(h0, self.df_dim + self.y_dim, name='d_h1_conv')))
+      h1 = tf.reshape(h1, [self.batch_size - 1])
+      h1 = tf.concat([h1, y], 1)
+
+      h2 = lrelu(self.d_bn2(linear(h1, self.dfc_dim, 'd_h2_lin')))
+      h2 = tf.concat([h2, y], 1)
+
+      h3 = linear(h2, 1, 'd_h3_lin')
+
+      return tf.nn.sigmoid(h3), h3
